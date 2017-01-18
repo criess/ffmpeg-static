@@ -27,6 +27,9 @@ then
   fi
 fi
 
+#echo $TARGET_DIR
+#exit
+
 cd `dirname $0`
 ENV_ROOT=`pwd`
 . ./env.source
@@ -94,10 +97,28 @@ download \
   "https://github.com/webmproject/libvpx/archive/"
 
 download \
-  "2.8.tar.gz" \
+  "libogg-1.3.2.tar.gz" \
+  "" \
+  "nil" \
+  "http://downloads.xiph.org/releases/ogg"
+
+download \
+  "libvorbis-1.3.5.tar.gz" \
+  "" \
+  "nil" \
+  "http://downloads.xiph.org/releases/vorbis"
+
+download \
+  "libtheora-1.1.1.tar.gz" \
+  "" \
+  "nil" \
+  "http://downloads.xiph.org/releases/theora/"
+
+download \
+  "n2.8.10.tar.gz" \
   "ffmpeg2.8.tar.gz" \
   "nil" \
-  "https://github.com/FFmpeg/FFmpeg/archive/release"
+  "https://github.com/FFmpeg/FFmpeg/archive"
 
 echo "*** Building yasm ***"
 cd $BUILD_DIR/yasm*
@@ -107,41 +128,78 @@ make install
 
 echo "*** Building x264 ***"
 cd $BUILD_DIR/x264*
-PATH="$BIN_DIR:$PATH" ./configure --prefix=$TARGET_DIR --enable-static --disable-shared --disable-opencl
+PATH="$BIN_DIR:$PATH" \
+CFLAGS="-fPIC" \
+CXXFLAGS="-fPIC" \
+./configure --prefix=$TARGET_DIR --enable-static --enable-pic --disable-shared --disable-opencl
 PATH="$BIN_DIR:$PATH" make -j $jval
 make install
 
 echo "*** Building x265 ***"
 cd $BUILD_DIR/x265*
 cd build/linux
-PATH="$BIN_DIR:$PATH" cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="$TARGET_DIR" -DENABLE_SHARED:bool=off ../../source
+PATH="$BIN_DIR:$PATH" CFLAGS="-fPIC" CXXFLAGS="-fPIC" cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="$TARGET_DIR" -DENABLE_SHARED:bool=off ../../source
 make -j $jval
 make install
 
 echo "*** Building fdk-aac ***"
 cd $BUILD_DIR/mstorsjo-fdk-aac*
 autoreconf -fiv
-./configure --prefix=$TARGET_DIR --disable-shared
+CFLAGS="-fPIC" CXXFLAGS="-fPIC" ./configure --prefix=$TARGET_DIR --disable-shared
 make -j $jval
 make install
 
 echo "*** Building mp3lame ***"
 cd $BUILD_DIR/lame*
-./configure --prefix=$TARGET_DIR --enable-nasm --disable-shared
+CFLAGS="-fPIC" CXXFLAGS="-fPIC" ./configure --prefix=$TARGET_DIR --enable-nasm --disable-shared
 make
 make install
 
 echo "*** Building opus ***"
 cd $BUILD_DIR/opus*
-./configure --prefix=$TARGET_DIR --disable-shared
+ CFLAGS="-fPIC" CXXFLAGS="-fPIC" ./configure --prefix=$TARGET_DIR --disable-shared
 make
 make install
 
 echo "*** Building libvpx ***"
 cd $BUILD_DIR/libvpx*
-PATH="$BIN_DIR:$PATH" ./configure --prefix=$TARGET_DIR --disable-examples --disable-unit-tests
+PATH="$BIN_DIR:$PATH" \
+CFLAGS="-fPIC" \
+CXXFLAGS="-fPIC" \
+ASFLAGS="-DPIC" \
+./configure --prefix=$TARGET_DIR --disable-examples --disable-unit-tests
 PATH="$BIN_DIR:$PATH" make -j $jval
 make install
+
+echo "*** Building libogg ***"
+cd $BUILD_DIR/libogg*
+PATH="$BIN_DIR:$PATH" \
+CFLAGS="-fPIC" \
+CXXFLAGS="-fPIC" \
+./configure --prefix=$TARGET_DIR --disable-shared --enable-static
+PATH="$BIN_DIR:$PATH" make -j $jval
+make install
+
+echo "*** Building libvorbis ***"
+cd $BUILD_DIR/libvorbis*
+PATH="$BIN_DIR:$PATH" \
+PKG_CONFIG_PATH="$TARGET_DIR/lib/pkgconfig" \
+CFLAGS="-fPIC" \
+CXXFLAGS="-fPIC" \
+./configure --prefix=$TARGET_DIR --disable-shared --enable-static
+PATH="$BIN_DIR:$PATH" make -j $jval
+make install
+
+echo "*** Building libtheora ***"
+cd $BUILD_DIR/libtheora*
+PATH="$BIN_DIR:$PATH" \
+PKG_CONFIG_PATH="$TARGET_DIR/lib/pkgconfig" \
+CFLAGS="-fPIC" \
+CXXFLAGS="-fPIC" \
+./configure --prefix=$TARGET_DIR --disable-shared --enable-static
+PATH="$BIN_DIR:$PATH" make -j $jval
+make install
+
 
 NPROC=1
 if which `nproc`;then
@@ -160,6 +218,8 @@ PKG_CONFIG_PATH="$TARGET_DIR/lib/pkgconfig" ./configure \
   --extra-cflags="-I$TARGET_DIR/include" \
   --extra-ldflags="-L$TARGET_DIR/lib" \
   --bindir="$BIN_DIR" \
+  --enable-shared \
+  --enable-ffmpeg \
   --enable-ffplay \
   --enable-ffserver \
   --enable-gpl \
@@ -178,3 +238,4 @@ PATH="$BIN_DIR:$PATH" make -j$NPROC
 make install
 make distclean
 hash -r
+
